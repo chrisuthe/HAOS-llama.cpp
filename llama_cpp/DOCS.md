@@ -23,12 +23,13 @@ the web UI shows a model picker. Restart the app after adding a model.
 
 ## Configuration
 
-Every option except **Model** is hidden behind "Show unused optional
-configuration options", and can be left unset.
+Every option except **Model** and **Preload** is hidden behind "Show unused
+optional configuration options", and all of them can be left empty.
 
 | Option | Meaning |
 |---|---|
 | **Model** | A Hugging Face reference, a file name in `/share/llama_cpp/models`, or empty. |
+| **Preload** | Models to load at startup when **Model** is empty. See below. |
 | **Context size** | Prompt context in tokens. Unset or 0 takes the size from the model. |
 | **GPU layers** | A number, `all`, or `auto`. Unset is `auto`. `0` stays on the CPU. |
 | **CPU threads** | Threads used for generation. |
@@ -36,6 +37,19 @@ configuration options", and can be left unset.
 | **API key** | Require this key on every request. |
 | **Hugging Face token** | For gated or private models. |
 | **Extra arguments** | Any other `llama-server` arguments. They are applied last. |
+
+## Keeping a model ready
+
+A loaded model stays loaded. The wait is on the first request after the app
+starts, while the model is read into memory.
+
+- With **Model** set, that model is loaded as the app starts.
+- With **Model** empty, models load on their first request. To load some at
+  startup instead, list them under **Preload**, by the name the web UI shows or
+  by file name. At most four models stay loaded at once.
+
+A name under **Preload** that matches no model stops the app at start, with the
+reason in the log.
 
 ## Using it from Home Assistant
 

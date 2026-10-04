@@ -1,5 +1,5 @@
 name: llama.cpp
-version: "0.1.0"
+version: "0.1.1"
 slug: llama_cpp
 description: >-
   Runs a llama.cpp server on this Home Assistant system, with an
@@ -35,8 +35,11 @@ video: true
 options:
   # Empty rather than absent, so the configuration screen shows the field.
   model: ""
+  preload: []
 schema:
   model: str?
+  preload:
+    - str
   context_size: int(0,)?
   gpu_layers: match(^(auto|all|[0-9]+)$)?
   threads: int(1,)?

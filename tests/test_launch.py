@@ -78,6 +78,48 @@ class BuildArgv(unittest.TestCase):
             self.argv(extra_args='--alias "unterminated')
 
 
+class Preload(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.models = Path(tmp.name) / "models"
+        self.models.mkdir()
+        (self.models / "tiny.gguf").touch()
+        (self.models / "vision").mkdir()
+        (self.models / "notes.txt").touch()
+
+    def test_preload_adds_the_preset_in_router_mode(self):
+        argv = launch.build_argv({"preload": ["tiny"]}, self.models, Path("/p.ini"))
+        self.assertEqual(argv[-2:], ["--models-preset", "/p.ini"])
+
+    def test_empty_preload_adds_nothing(self):
+        argv = launch.build_argv({"preload": []}, self.models)
+        self.assertNotIn("--models-preset", argv)
+
+    def test_preload_is_ignored_with_a_model_set(self):
+        argv = launch.build_argv({"model": "tiny.gguf", "preload": ["tiny"]}, self.models)
+        self.assertNotIn("--models-preset", argv)
+
+    def test_extra_args_still_come_after_the_preset(self):
+        argv = launch.build_argv({"preload": ["tiny"], "extra_args": "--threads 8"}, self.models)
+        self.assertEqual(argv[-2:], ["--threads", "8"])
+
+    def test_preset_names_files_directories_and_references(self):
+        text = launch.preset_text(["tiny.gguf", "vision", "user/repo:Q4_K_M"], self.models)
+        self.assertEqual(
+            text,
+            "version = 1\n\n"
+            "[tiny]\nload-on-startup = true\n\n"
+            "[vision]\nload-on-startup = true\n\n"
+            "[user/repo:Q4_K_M]\nload-on-startup = true\n",
+        )
+
+    def test_unknown_names_are_rejected(self):
+        for bad in ("absent", "notes", "notes.txt", "tiny]\n[x"):
+            with self.assertRaisesRegex(launch.ConfigError, "preload", msg=bad):
+                launch.preset_text([bad], self.models)
+
+
 class BuildEnv(unittest.TestCase):
     def test_cache_dir_is_always_set(self):
         env = launch.build_env({}, {"PATH": "/bin"}, Path("/share/llama_cpp/cache"))

@@ -5,6 +5,12 @@ configuration:
       A Hugging Face reference such as user/repo:Q4_K_M, which is downloaded
       on first start, or the name of a .gguf file in /share/llama_cpp/models.
       Leave empty to offer every model in that folder and load each on demand.
+  preload:
+    name: Preload
+    description: >-
+      Models to load when the app starts, instead of on their first request.
+      Name them as the web UI lists them, or by file name. Only used while
+      Model is empty; a model set above is always loaded at start.
   context_size:
     name: Context size
     description: >-

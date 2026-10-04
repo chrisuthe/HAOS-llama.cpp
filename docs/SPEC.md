@@ -1,6 +1,6 @@
 # llama.cpp app for Home Assistant OS — spec
 
-Status: draft, v0.1.0 implemented. Research behind each decision is in
+Status: draft, v0.1.1 implemented. Research behind each decision is in
 [research.md](research.md).
 
 ## Goal
@@ -56,6 +56,7 @@ message when an option cannot be turned into a valid command.
 | Option | Schema | Maps to | Unset means |
 |---|---|---|---|
 | `model` | `str?` | `--hf-repo`, `--model`, or `--models-dir` (below) | router mode |
+| `preload` | list of `str` | a generated `--models-preset` (below) | nothing preloaded |
 | `context_size` | `int(0,)?` | `--ctx-size` | size from the model |
 | `gpu_layers` | `auto`, `all`, or a number | `--n-gpu-layers` | `auto` |
 | `threads` | `int(1,)?` | `--threads` | llama.cpp decides |
@@ -64,8 +65,9 @@ message when an option cannot be turned into a valid command.
 | `hf_token` | `password?` | `HF_TOKEN` | anonymous downloads |
 | `extra_args` | `str?` | appended verbatim, shell-split | nothing |
 
-Every option is optional and defaults to llama.cpp's own default, so the app
-does not carry a second set of defaults that can drift from upstream.
+Every option but `preload` is optional, and `preload` defaults to an empty
+list. An unset option falls to llama.cpp's own default, so the app does not
+carry a second set of defaults that can drift from upstream.
 `extra_args` goes last so it can override anything, and is the escape hatch for
 the several hundred flags this app does not surface.
 
@@ -87,6 +89,23 @@ upstream has announced its default will move to 9931.
 - **`user/repo` or `user/repo:quant`** — `--hf-repo`. llama.cpp downloads it
   into the cache on first start.
 - anything else is rejected at start.
+
+### Preloading
+
+In router mode a model loads on the first request that names it. `preload`
+lists models to load at startup instead. The launcher writes
+`/data/preload.ini`, a router preset with one section per name carrying
+`load-on-startup = true`, and passes it as `--models-preset`. A section whose
+name matches a model from the models directory or the cache only adds that
+setting to it.
+
+Names are checked against the models directory first, because a section naming
+no model is not an error to llama.cpp: it is listed as a model that never
+finishes loading. A name shaped like a Hugging Face reference is passed
+through, since the cache cannot be checked from the launcher.
+
+`preload` is ignored, with a log line, when `model` is set: single-model mode
+loads its model at startup already, and presets belong to the router.
 
 ### Storage
 

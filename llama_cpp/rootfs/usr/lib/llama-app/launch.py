@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 
 OPTIONS_FILE = Path("/data/options.json")
+# Rewritten on every start from the `preload` option.
+PRESET_FILE = Path("/data/preload.ini")
 STORAGE_DIR = Path("/share/llama_cpp")
 SERVER = "/app/llama-server"
 # Passed explicitly: upstream has announced that its default port will change,
@@ -59,9 +61,41 @@ def model_args(model, models_dir):
     )
 
 
-def build_argv(options, models_dir):
+def router_model_names(models_dir):
+    """Names the router gives the models in `models_dir`."""
+    names = set()
+    for entry in models_dir.iterdir():
+        if entry.is_dir():
+            names.add(entry.name)
+        elif entry.suffix == ".gguf":
+            names.add(entry.stem)
+    return names
+
+
+def preset_text(preload, models_dir):
+    """A router preset that loads each model in `preload` at startup."""
+    known = router_model_names(models_dir)
+    sections = []
+    for entry in preload:
+        name = entry.removesuffix(".gguf")
+        # A section naming no known model does not fail: the router lists it
+        # as a model that never finishes loading. Downloaded models are named
+        # by their Hugging Face reference and cannot be checked from here.
+        if name not in known and not HF_REF.match(name):
+            raise ConfigError(
+                f"preload names {entry!r}, which is not a model in {models_dir}"
+            )
+        sections.append(f"[{name}]\nload-on-startup = true\n")
+    return "version = 1\n\n" + "\n".join(sections)
+
+
+def build_argv(options, models_dir, preset_file=PRESET_FILE):
     argv = [SERVER, "--host", "0.0.0.0", "--port", str(PORT)]
     argv += model_args(options.get("model"), models_dir)
+    # A single model is loaded at startup anyway, and presets are a router
+    # feature, so `preload` only applies with no model set.
+    if options.get("preload") and not _is_set(options.get("model")):
+        argv += ["--models-preset", str(preset_file)]
     for name, flag in PASSTHROUGH.items():
         if _is_set(options.get(name)):
             argv += [flag, str(options[name])]
@@ -94,6 +128,10 @@ def main():
         models_dir.mkdir(parents=True, exist_ok=True)
         cache_dir.mkdir(parents=True, exist_ok=True)
         argv = build_argv(options, models_dir)
+        if "--models-preset" in argv:
+            PRESET_FILE.write_text(preset_text(options["preload"], models_dir))
+        elif options.get("preload"):
+            print("llama-app: preload is ignored while a model is set", flush=True)
     except (OSError, ValueError, ConfigError) as err:
         print(f"llama-app: {err}", file=sys.stderr, flush=True)
         return 1

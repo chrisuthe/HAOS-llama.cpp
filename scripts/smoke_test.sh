@@ -80,6 +80,18 @@ curl -fsS "http://127.0.0.1:${PORT}/v1/models" | grep -q 'stories260K' \
 chat stories260K | grep -q '"content"' || fail "no completion in router mode"
 [ "$(healthcheck)" = "HTTP 200" ] || fail "health check failed in router mode"
 
+echo "== router mode, preloaded model"
+start '{"model":"","preload":["stories260K.gguf"]}'
+wait_healthy
+# No request has named the model, so only the preset can have loaded it.
+for _ in $(seq 1 30); do
+    status="$(curl -fsS "http://127.0.0.1:${PORT}/v1/models" | python3 -c \
+        'import json, sys; print(json.load(sys.stdin)["data"][0]["status"]["value"])')"
+    [ "$status" = loaded ] && break
+    sleep 1
+done
+[ "$status" = loaded ] || fail "preloaded model is $status, expected loaded"
+
 echo "== web UI is served"
 curl -fsS --compressed -H 'Accept-Encoding: gzip' "http://127.0.0.1:${PORT}/" | grep -q '<html' \
     || fail "web UI not served"
