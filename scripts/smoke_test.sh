@@ -40,6 +40,11 @@ wait_healthy() {
     fail "server did not become healthy"
 }
 
+# Runs the image's own health check, the way the container engine would.
+healthcheck() {
+    "$ENGINE" exec "$NAME" /usr/bin/python3 /usr/lib/llama-app/healthcheck.py
+}
+
 chat() {
     curl -fsS "http://127.0.0.1:${PORT}/v1/chat/completions" "${@:2}" \
         -H 'Content-Type: application/json' \
@@ -48,6 +53,9 @@ chat() {
 
 # podman drops HEALTHCHECK instructions unless it writes the docker format.
 BUILDAH_FORMAT=docker "$ENGINE" build -q -t "$IMAGE" llama_cpp >/dev/null
+
+"$ENGINE" image inspect "$IMAGE" | grep -q 'healthcheck.py' \
+    || fail "image has no health check configured"
 
 mkdir -p "$work/data" "$work/share/llama_cpp/models"
 curl -fsSL -o "$work/share/llama_cpp/models/stories260K.gguf" "$MODEL_URL"
@@ -60,6 +68,8 @@ code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${PORT}/v1/mode
 chat stories260K -H 'Authorization: Bearer smoke-key' | grep -q '"content"' \
     || fail "no completion in single-model mode"
 "$ENGINE" logs "$NAME" 2>&1 | grep -q 'smoke-key' && fail "API key leaked into the log"
+# /health is exempt from the key, or the check would fail on every keyed install.
+[ "$(healthcheck)" = "HTTP 200" ] || fail "health check failed with an API key set"
 
 echo "== router mode, model picked per request"
 start '{"model":""}'
@@ -67,6 +77,7 @@ wait_healthy
 curl -fsS "http://127.0.0.1:${PORT}/v1/models" | grep -q 'stories260K' \
     || fail "router does not list the model in the models directory"
 chat stories260K | grep -q '"content"' || fail "no completion in router mode"
+[ "$(healthcheck)" = "HTTP 200" ] || fail "health check failed in router mode"
 
 echo "== web UI is served"
 curl -fsS --compressed -H 'Accept-Encoding: gzip' "http://127.0.0.1:${PORT}/" | grep -q '<html' \

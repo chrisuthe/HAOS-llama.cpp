@@ -25,6 +25,10 @@ repository pages), and the Supervisor source for device policy.
 - `video: true` adds cgroup device rules for majors 29 (framebuffer), 81
   (video4linux) and 226 (DRM) — `supervisor/hardware/policy.py`. Major 226 is
   `/dev/dri/*`, the render nodes Vulkan opens.
+- Health, from `supervisor/apps/app.py`: an app whose image has a health check
+  stays in "startup" until Docker reports healthy or unhealthy, and the
+  Supervisor waits up to 120 seconds for that. With the app's Watchdog on, the
+  Supervisor restarts it when the container is unhealthy, failed or stopped.
 - Schema types used here: `str`, `int(min,)`, `match(regex)`, `password`, with
   `?` for optional.
 

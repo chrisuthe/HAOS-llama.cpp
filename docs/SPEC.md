@@ -116,11 +116,30 @@ the CPU; no option has to change.
 
 ### Health
 
-The upstream `HEALTHCHECK` on `/health` is removed. In single-model mode nothing
-listens while a model downloads, and the Supervisor tracks a container's health
-state, so a long download would read as an unhealthy app. No `watchdog` URL is
-set, for the same reason. How the Supervisor acts on that state was read from
-its source, not observed.
+`/usr/lib/llama-app/healthcheck.py` replaces the upstream `curl -f /health`. It
+reports unhealthy only when the server is up but not answering:
+
+| `GET /health` | Meaning | Verdict |
+|---|---|---|
+| 200 | serving | healthy |
+| 503 | a model is still loading | healthy |
+| connection refused | still downloading or starting | healthy |
+| timeout, any other status or error | hung or broken | unhealthy |
+
+A refused connection can count as healthy because the launcher `exec`s
+`llama-server`: if the server dies, the container exits, which the Supervisor
+handles on its own.
+
+The upstream check cannot be kept. The Supervisor restarts an unhealthy app when
+the user turns its Watchdog on, and upstream's check fails for as long as a
+model downloads, so it would restart the app mid-download every time. A
+`watchdog` URL in `config.yaml` has the same flaw and is not set.
+
+Because the first check passes at once, the app shows as started while a model
+is still downloading; the log is where progress shows.
+
+In router mode `/health` is the router's own, so one hung model instance is not
+detected.
 The Supervisor still restarts the app if the process exits.
 
 ## Verified, and not
@@ -133,6 +152,10 @@ Verified locally with podman on Fedora, amd64 (`scripts/smoke_test.sh` and
 - chat completions work in both modes; an API key is enforced and does not
   appear in the log
 - a bad `model` stops the container with exit 1 and an explanation
+- the health check passes in both modes, including with an API key set, and
+  its verdict table holds against local test servers
+- during a Hugging Face download the server refuses connections, and the
+  check, run through podman, reports healthy throughout
 - Vulkan offload works through the image with `/dev/dri` passed in (Radeon
   780M, RADV)
 
@@ -155,7 +178,6 @@ Not verified — these need a real Home Assistant OS install:
 - **API key and ingress.** With `api_key` set, the web UI asks for the key; it
   is not injected.
 - **No AppArmor profile**, so the security rating is the default plus ingress.
-- **No hung-server detection**, since there is no health check.
 - **No icon or logo.**
 - **No published image.** `config.yaml` has no `image` key, so the Supervisor
   builds on the device. That means an ~880 MB base pull on install and no CI.
@@ -166,4 +188,3 @@ Not verified — these need a real Home Assistant OS install:
    "not verified" list.
 2. Add CI that builds and publishes both architectures, and set `image:`.
 3. AppArmor profile, icon and logo.
-4. A health check that tolerates a download in progress.

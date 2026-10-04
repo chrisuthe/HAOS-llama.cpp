@@ -15,11 +15,11 @@ LABEL \
 
 COPY rootfs/ /
 
-# Drop the upstream check on /health. Nothing listens while a model downloads,
-# which can take longer than any start period worth setting, and the Supervisor
-# tracks a container's health state and can restart an app that reports
-# unhealthy.
-HEALTHCHECK NONE
+# Replaces the upstream `curl -f /health`, which fails for as long as a model is
+# downloading or loading. With the app's Watchdog on, the Supervisor restarts an
+# unhealthy app, so that check would restart it mid-download, every time.
+HEALTHCHECK --interval=30s --timeout=15s --retries=3 \
+    CMD ["/usr/bin/python3", "/usr/lib/llama-app/healthcheck.py"]
 
-# The launcher needs only the Python the base image already ships.
+# The launcher and health check need only the Python the base image ships.
 ENTRYPOINT ["/usr/bin/python3", "/usr/lib/llama-app/launch.py"]
