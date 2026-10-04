@@ -1,0 +1,40 @@
+configuration:
+  model:
+    name: Model
+    description: >-
+      A Hugging Face reference such as user/repo:Q4_K_M, which is downloaded
+      on first start, or the name of a .gguf file in /share/llama_cpp/models.
+      Leave empty to offer every model in that folder and load each on demand.
+  context_size:
+    name: Context size
+    description: >-
+      Prompt context in tokens. Leave unset, or use 0, to take the size from
+      the model.
+  gpu_layers:
+    name: GPU layers
+    description: >-
+      Layers to offload to a GPU: a number, "all", or "auto". Leave unset for
+      auto. Use 0 to stay on the CPU.
+  threads:
+    name: CPU threads
+    description: Threads used for generation. Leave unset to let llama.cpp decide.
+  parallel:
+    name: Parallel requests
+    description: >-
+      Requests served at the same time. The context is shared between them.
+      Leave unset to let llama.cpp decide.
+  api_key:
+    name: API key
+    description: >-
+      Require this key on every request. Leave unset to allow any client that
+      can reach the port.
+  hf_token:
+    name: Hugging Face token
+    description: Only needed to download gated or private models.
+  extra_args:
+    name: Extra arguments
+    description: >-
+      Additional llama-server arguments, appended last so they override the
+      options above.
+network:
+  8080/tcp: OpenAI-compatible API and web UI

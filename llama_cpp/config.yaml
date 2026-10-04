@@ -1,0 +1,44 @@
+name: llama.cpp
+version: "0.1.0"
+slug: llama_cpp
+description: >-
+  Runs a llama.cpp server on this Home Assistant system, with an
+  OpenAI-compatible API and a chat web UI for local language models.
+url: https://github.com/chrisuthe/HAOS-llama.cpp
+arch:
+  - amd64
+  - aarch64
+# Not yet run on real Home Assistant OS hardware.
+stage: experimental
+# llama-server serves the API and the web UI from one port, so ingress and the
+# host mapping below both point at it.
+ingress: true
+ingress_port: 8080
+# Completions are streamed as server-sent events.
+ingress_stream: true
+panel_icon: mdi:chat-processing-outline
+panel_title: llama.cpp
+ports:
+  8080/tcp: 8080
+ports_description:
+  8080/tcp: OpenAI-compatible API and web UI
+# Models live under /share/llama_cpp rather than /data so that files can be
+# dropped in over Samba, and so that multi-gigabyte models stay out of this
+# app's own backup.
+map:
+  - type: share
+    read_only: false
+# Grants the DRM render nodes under /dev/dri, which is all Vulkan needs.
+video: true
+options:
+  # Empty rather than absent, so the configuration screen shows the field.
+  model: ""
+schema:
+  model: str?
+  context_size: int(0,)?
+  gpu_layers: match(^(auto|all|[0-9]+)$)?
+  threads: int(1,)?
+  parallel: int(1,)?
+  api_key: password?
+  hf_token: password?
+  extra_args: str?
