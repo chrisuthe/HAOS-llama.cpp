@@ -9,12 +9,15 @@ It is a thin package around the upstream `llama-server` image. See
 [docs/SPEC.md](docs/SPEC.md) for the design and what is still unverified, and
 [llama_cpp/DOCS.md](llama_cpp/DOCS.md) for the user documentation.
 
-Experimental: not yet run on real Home Assistant OS hardware.
+Experimental: it runs on Home Assistant OS, but GPU offload there is untested.
 
 ## Install
 
-1. In **Settings → Apps → App store**, open the menu, choose **Repositories**,
-   and add `https://github.com/chrisuthe/HAOS-llama.cpp`.
+[![Add this repository to your Home Assistant instance.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fchrisuthe%2FHAOS-llama.cpp)
+
+1. Use the button above. Or, in **Settings → Apps → App store**, open the menu,
+   choose **Repositories**, and add
+   `https://github.com/chrisuthe/HAOS-llama.cpp`.
 2. Install **llama.cpp** from the store. The image is about 880 MB.
 
 ## Layout

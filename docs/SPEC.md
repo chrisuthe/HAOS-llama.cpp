@@ -188,15 +188,26 @@ Verified locally with podman on Fedora, amd64 (`scripts/smoke_test.sh` and
 - Vulkan offload works through the image with `/dev/dri` passed in (Radeon
   780M, RADV)
 
-Not verified — these need a real Home Assistant OS install:
+Verified in CI, on native `amd64` and `aarch64` runners under docker: the unit
+tests and the same smoke test, and the published image carrying both
+architectures.
 
-- the Supervisor accepts `config.yaml` and pulls the published image
-- the web UI behind ingress. Its assets and most API calls are relative, but
-  the model list and load calls are root-absolute strings in the bundle and
-  depend on the UI prefixing its computed base path
+Verified on one Home Assistant OS install (2026-10-04, version 0.1.0):
+
+- the store lists the app from the repository URL, and the Supervisor accepts
+  `config.yaml` and pulls the published image
+- the web UI works through ingress, including choosing and chatting with a
+  model in router mode
+- router mode starts with an empty models directory, and after a restart
+  serves a model copied into `/share/llama_cpp/models`
+- Home Assistant's `llama.cpp` integration works against this server
+
+Not verified:
+
 - `video: true` is enough for Vulkan on Home Assistant OS, on Intel, AMD, and
-  Raspberry Pi GPUs
-- anything on `aarch64`
+  Raspberry Pi GPUs. Whether that install used a GPU was not recorded
+- Home Assistant OS on `aarch64`
+- a Hugging Face download on Home Assistant OS
 
 ## Known gaps
 
@@ -216,8 +227,7 @@ Not verified — these need a real Home Assistant OS install:
 
 ## Next
 
-1. Install on a Home Assistant OS box as a local app and work through the
-   "not verified" list.
+1. Work through the rest of the "not verified" list on Home Assistant OS.
 2. Close the version-before-image window, by testing both architectures
    before the update commits or by publishing before the version lands.
 3. AppArmor profile, icon and logo.

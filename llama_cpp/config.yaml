@@ -10,7 +10,7 @@ image: ghcr.io/chrisuthe/haos-llama-cpp
 arch:
   - amd64
   - aarch64
-# Not yet run on real Home Assistant OS hardware.
+# GPU offload on Home Assistant OS is still untested.
 stage: experimental
 # llama-server serves the API and the web UI from one port, so ingress and the
 # host mapping below both point at it.
