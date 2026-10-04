@@ -1,0 +1,149 @@
+name: Build
+
+# Tests every push and pull request, and publishes from main. A version of the
+# app is published once: the publish job does nothing when the version in
+# config.yaml already has an image, so a version bump on main is the release.
+#
+# workflow_dispatch is how update-llama.yml reaches this workflow. A push made
+# with the workflow token does not trigger other workflows, so it asks by name.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+# Only pull requests are cancelled when superseded. A run on main may be in the
+# middle of publishing.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  IMAGE: ghcr.io/chrisuthe/haos-llama-cpp
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      # Third-party actions are pinned to a commit, since a tag can be
+      # repointed. The trailing comment is the version that commit was.
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # actionlint 1.7.12, by digest. Dependabot cannot see a `run:` script.
+      - name: Lint the workflows
+        run: |
+          docker run --rm --volume "$PWD:/repo" --workdir /repo \
+            rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 \
+            -color
+
+      - name: Lint the shell scripts
+        run: shellcheck scripts/*.sh
+
+      # A manifest the Supervisor rejects is an app that never shows up in the
+      # store, with no other symptom.
+      - name: Lint the app manifest
+        uses: frenck/action-addon-linter@b9cfd1bc62ba60d2c4fc96317b5f7ada5923f4a7 # v2.21.1
+        with:
+          path: ./llama_cpp
+
+  # Both architectures on native runners, so the smoke test runs the real
+  # binary for each rather than an emulated one.
+  test:
+    name: test (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Unit tests
+        run: python3 -m unittest discover -s tests
+
+      # The runner has podman as well, and the script prefers it. docker is
+      # what publishes, so docker is what gets tested.
+      - name: Smoke test
+        env:
+          ENGINE: docker
+        run: ./scripts/smoke_test.sh
+
+  publish:
+    name: publish
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    # Two runs on main must not race to publish the same version.
+    concurrency:
+      group: publish
+      cancel-in-progress: false
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read the app version
+        id: version
+        run: |
+          version="$(sed -nE 's/^version: "([0-9]+\.[0-9]+\.[0-9]+)"$/\1/p' llama_cpp/config.yaml)"
+          [ -n "$version" ] || {
+            echo "::error::no version in llama_cpp/config.yaml"
+            exit 1
+          }
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+
+      - name: Log in to the registry
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin <<<"$TOKEN"
+
+      - name: Check whether this version is already published
+        id: published
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if docker buildx imagetools inspect "$IMAGE:$VERSION" >/dev/null 2>&1; then
+            echo "$IMAGE:$VERSION is already published"
+            echo "exists=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >>"$GITHUB_OUTPUT"
+          fi
+
+      # The Dockerfile has no RUN step, only a pinned multi-arch base and a
+      # COPY, so both architectures build on this one runner with no emulator.
+      # The default builder cannot push a multi-arch image; a container one can.
+      - name: Build and push
+        if: steps.published.outputs.exists == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          docker buildx create --use
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --label "org.opencontainers.image.version=$VERSION" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --provenance=false \
+            --tag "$IMAGE:$VERSION" \
+            --tag "$IMAGE:latest" \
+            --push \
+            llama_cpp

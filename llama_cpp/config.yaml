@@ -5,6 +5,8 @@ description: >-
   Runs a llama.cpp server on this Home Assistant system, with an
   OpenAI-compatible API and a chat web UI for local language models.
 url: https://github.com/chrisuthe/HAOS-llama.cpp
+# Published by .github/workflows/build.yml, one tag per version below.
+image: ghcr.io/chrisuthe/haos-llama-cpp
 arch:
   - amd64
   - aarch64

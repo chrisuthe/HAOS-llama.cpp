@@ -15,7 +15,8 @@ MODEL_URL="https://huggingface.co/ggml-org/models/resolve/main/tinyllamas/storie
 work="$(mktemp -d)"
 cleanup() {
     "$ENGINE" rm -f "$NAME" >/dev/null 2>&1 || true
-    rm -rf "$work"
+    # Under docker the container's root owns what it wrote there.
+    rm -rf "$work" 2>/dev/null || true
 }
 trap cleanup EXIT
 

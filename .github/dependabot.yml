@@ -1,0 +1,9 @@
+# Follows the `uses:` pins in the workflows. The llama.cpp base image is moved
+# by update-llama.yml instead, and the actionlint digest inside a `run:` script
+# is bumped by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

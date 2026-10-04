@@ -11,15 +11,11 @@ It is a thin package around the upstream `llama-server` image. See
 
 Experimental: not yet run on real Home Assistant OS hardware.
 
-## Install as a local app
+## Install
 
-There is no published image yet, so Home Assistant builds the app on the device.
-
-1. Copy the `llama_cpp` directory to `/addons/llama_cpp` on the Home Assistant
-   machine (the `addons` share of the Samba app).
-2. In **Settings → Apps → App store**, choose **Check for updates** from the
-   menu. The app appears under **Local apps**.
-3. Install it. The first install pulls a base image of about 880 MB.
+1. In **Settings → Apps → App store**, open the menu, choose **Repositories**,
+   and add `https://github.com/chrisuthe/HAOS-llama.cpp`.
+2. Install **llama.cpp** from the store. The image is about 880 MB.
 
 ## Layout
 
@@ -28,6 +24,8 @@ There is no published image yet, so Home Assistant builds the app on the device.
 - `tests/` — unit tests for the launcher.
 - `scripts/smoke_test.sh` — builds the image and runs it as the Supervisor
   would.
+- `scripts/update_llama.py` — moves the app to a newer llama.cpp release.
+- `.github/workflows/` — tests, publishing, and the daily llama.cpp update.
 
 ## Test
 
@@ -39,14 +37,23 @@ python3 -m unittest discover -s tests
 The smoke test needs podman or docker, and network access for the base image
 and a 1 MB test model.
 
+## Releases
+
+Every push to `main` is tested on both architectures. If the `version` in
+`llama_cpp/config.yaml` has no published image yet, CI builds and pushes
+`ghcr.io/chrisuthe/haos-llama-cpp` for it, so a version bump on `main` is a
+release.
+
 ## Updating llama.cpp
 
-Change the tag and digest in `llama_cpp/Dockerfile`, bump `version` in
-`llama_cpp/config.yaml`, and add a `CHANGELOG.md` entry. The digest is the
-multi-arch index digest:
+A daily workflow moves the app to upstream's latest full release: it repins the
+base image, bumps the patch version, adds a changelog entry, runs the tests,
+and commits to `main`, which publishes it. To do the same by hand (needs
+skopeo):
 
 ```sh
-skopeo inspect --raw docker://ghcr.io/ggml-org/llama.cpp:server-vulkan-<tag> | sha256sum
+python3 scripts/update_llama.py                      # latest release
+LLAMA_CPP_TAG=v0.5.0 python3 scripts/update_llama.py  # a specific one
 ```
 
 ## Licence

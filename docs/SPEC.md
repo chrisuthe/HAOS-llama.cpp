@@ -1,6 +1,6 @@
 # llama.cpp app for Home Assistant OS — spec
 
-Status: draft, v0.1.0 implemented locally. Research behind each decision is in
+Status: draft, v0.1.0 implemented. Research behind each decision is in
 [research.md](research.md).
 
 ## Goal
@@ -142,6 +142,35 @@ In router mode `/health` is the router's own, so one hung model instance is not
 detected.
 The Supervisor still restarts the app if the process exits.
 
+### Build and release
+
+`.github/workflows/build.yml` runs on every push and pull request: workflow,
+shell and app-manifest linting, then the unit tests and the smoke test on native
+`amd64` and `aarch64` runners.
+
+On `main` it also publishes. The publish job reads `version` from
+`config.yaml` and, if `ghcr.io/chrisuthe/haos-llama-cpp:<version>` does not
+exist yet, builds both architectures and pushes that tag and `latest`. A version
+is therefore published exactly once, and a version bump on `main` is the
+release; there are no git tags. The Dockerfile has no `RUN` step, so both
+architectures build on one runner without emulation.
+
+`config.yaml` names that image, so the Supervisor pulls it rather than building
+on the device.
+
+### Tracking llama.cpp
+
+`.github/workflows/update-llama.yml` runs daily. `scripts/update_llama.py` asks
+GitHub for upstream's latest full release — not the `bNNNNN` prereleases, which
+appear several times a day — and, if the Dockerfile pins something else and the
+release's `server-vulkan` image is complete for both architectures, repins the
+`FROM` line by index digest, bumps the app's patch version, and adds a changelog
+entry. The workflow then runs the tests against the result, commits to `main` as
+the Actions bot, and starts Build, which publishes the new version.
+
+There is no pull request in between. The app's version is its own and only says
+"newer"; the changelog says which llama.cpp each one carries.
+
 ## Verified, and not
 
 Verified locally with podman on Fedora, amd64 (`scripts/smoke_test.sh` and
@@ -161,7 +190,7 @@ Verified locally with podman on Fedora, amd64 (`scripts/smoke_test.sh` and
 
 Not verified — these need a real Home Assistant OS install:
 
-- the Supervisor accepts `config.yaml` and builds the Dockerfile on the device
+- the Supervisor accepts `config.yaml` and pulls the published image
 - the web UI behind ingress. Its assets and most API calls are relative, but
   the model list and load calls are root-absolute strings in the bundle and
   depend on the UI prefixing its computed base path
@@ -179,12 +208,16 @@ Not verified — these need a real Home Assistant OS install:
   is not injected.
 - **No AppArmor profile**, so the security rating is the default plus ingress.
 - **No icon or logo.**
-- **No published image.** `config.yaml` has no `image` key, so the Supervisor
-  builds on the device. That means an ~880 MB base pull on install and no CI.
+- **A version can be visible before its image.** The store reads `version`
+  from `main` as soon as it is pushed; the image follows a few minutes later,
+  and not at all if the tests fail on `main`. An update attempted in that
+  window fails to pull. The daily update tests on `amd64` before it commits, so
+  only an `aarch64`-only failure can strand a version.
 
 ## Next
 
 1. Install on a Home Assistant OS box as a local app and work through the
    "not verified" list.
-2. Add CI that builds and publishes both architectures, and set `image:`.
+2. Close the version-before-image window, by testing both architectures
+   before the update commits or by publishing before the version lands.
 3. AppArmor profile, icon and logo.

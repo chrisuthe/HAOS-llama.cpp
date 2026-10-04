@@ -1,0 +1,70 @@
+name: Update llama.cpp
+
+# Once a day, move the app to the latest llama.cpp release, if there is a newer
+# one. "Latest" is upstream's latest full release, not the bNNNNN builds it
+# publishes as prereleases several times a day.
+#
+# The update is committed straight to main, after the tests pass against it, and
+# Build is then asked to publish. No pull request sits in between, on purpose:
+# the change is one image pin and a version bump, and the tests below are the
+# same ones a reviewer would wait for.
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  update:
+    name: update
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      # To push the update, and to start Build afterwards.
+      contents: write
+      actions: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Look for a newer llama.cpp
+        id: update
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/update_llama.py
+
+      - name: Unit tests
+        if: steps.update.outputs.changed == 'true'
+        run: python3 -m unittest discover -s tests
+
+      - name: Smoke test
+        if: steps.update.outputs.changed == 'true'
+        env:
+          ENGINE: docker
+        run: ./scripts/smoke_test.sh
+
+      - name: Commit and push
+        if: steps.update.outputs.changed == 'true'
+        env:
+          TAG: ${{ steps.update.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --all --message "Update llama.cpp to $TAG"
+          git push
+
+      - name: Start Build
+        if: steps.update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run build.yml --ref main
