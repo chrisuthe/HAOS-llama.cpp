@@ -1,4 +1,4 @@
-# llama.cpp app for Home Assistant
+# llama.cpp app for Home Assistant OS
 
 A Home Assistant app (formerly "add-on") that runs a
 [llama.cpp](https://github.com/ggml-org/llama.cpp) server on the Home Assistant
