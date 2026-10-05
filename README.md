@@ -5,6 +5,9 @@ A Home Assistant app (formerly "add-on") that runs a
 OS machine: a chat web UI inside Home Assistant, and an OpenAI-compatible API
 for Home Assistant's llama.cpp integration.
 
+This is a community project. It is not affiliated with or endorsed by the
+llama.cpp or ggml projects, or by Home Assistant.
+
 It is a thin package around the upstream `llama-server` image. See
 [docs/SPEC.md](docs/SPEC.md) for the design and what is still unverified, and
 [llama_cpp/DOCS.md](llama_cpp/DOCS.md) for the user documentation.

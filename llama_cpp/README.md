@@ -10,5 +10,8 @@ inside Home Assistant and an OpenAI-compatible API, which is what Home
 Assistant's llama.cpp integration connects to. Models are GGUF files, downloaded
 from Hugging Face or copied into `/share/llama_cpp/models`.
 
+This is a community project, not affiliated with or endorsed by the llama.cpp
+or ggml projects, or by Home Assistant.
+
 [aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
 [amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
