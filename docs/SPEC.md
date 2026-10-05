@@ -1,6 +1,6 @@
 # llama.cpp app for Home Assistant OS — spec
 
-Status: draft, v0.1.1 implemented. Research behind each decision is in
+Status: draft, v0.1.2 implemented. Research behind each decision is in
 [research.md](research.md).
 
 ## Goal
@@ -57,17 +57,32 @@ message when an option cannot be turned into a valid command.
 |---|---|---|---|
 | `model` | `str?` | `--hf-repo`, `--model`, or `--models-dir` (below) | router mode |
 | `preload` | list of `str` | a generated `--models-preset` (below) | nothing preloaded |
+| `thinking` | `bool` | `--reasoning off` when false | defaults to false |
 | `context_size` | `int(0,)?` | `--ctx-size` | size from the model |
 | `gpu_layers` | `auto`, `all`, or a number | `--n-gpu-layers` | `auto` |
 | `threads` | `int(1,)?` | `--threads` | llama.cpp decides |
-| `parallel` | `int(1,)?` | `--parallel` | llama.cpp decides |
+| `parallel` | `int(1,)?` | `--parallel` | defaults to 2 |
 | `api_key` | `password?` | `LLAMA_API_KEY` | no authentication |
 | `hf_token` | `password?` | `HF_TOKEN` | anonymous downloads |
 | `extra_args` | `str?` | appended verbatim, shell-split | nothing |
 
-Every option but `preload` is optional, and `preload` defaults to an empty
-list. An unset option falls to llama.cpp's own default, so the app does not
-carry a second set of defaults that can drift from upstream.
+Every option but `preload` and `thinking` is optional, and `preload` defaults
+to an empty list. An unset option falls to llama.cpp's own default, so the app
+does not carry a second set of defaults that can drift from upstream.
+`parallel` and `thinking` are the exceptions.
+
+`thinking` defaults to off, which passes `--reasoning off`. A reasoning model
+otherwise thinks before every answer, and for the voice requests this app
+mostly serves that is most of the wait. On passes nothing, leaving llama.cpp to
+follow the model's chat template rather than forcing reasoning on a model
+without it.
+
+`config.yaml` defaults `parallel` to 2, where llama.cpp's automatic choice is 4
+slots. The default lives in `config.yaml` rather than the launcher, so it shows
+on the configuration screen. Because the Supervisor fills a missing option from
+that default, getting llama.cpp's automatic choice back takes `--parallel -1`
+in `extra_args`.
+
 `extra_args` goes last so it can override anything, and is the escape hatch for
 the several hundred flags this app does not surface.
 
@@ -220,6 +235,8 @@ Verified on one Home Assistant OS install (2026-10-04, version 0.1.0):
 - router mode starts with an empty models directory, and after a restart
   serves a model copied into `/share/llama_cpp/models`
 - Home Assistant's `llama.cpp` integration works against this server
+- updating an installed 0.1.0 to 0.1.1 keeps its options, and `preload` loads
+  the named model at startup
 
 Not verified:
 
@@ -237,7 +254,6 @@ Not verified:
 - **API key and ingress.** With `api_key` set, the web UI asks for the key; it
   is not injected.
 - **No AppArmor profile**, so the security rating is the default plus ingress.
-- **No icon or logo.**
 - **A version can be visible before its image.** The store reads `version`
   from `main` as soon as it is pushed; the image follows a few minutes later,
   and not at all if the tests fail on `main`. An update attempted in that
@@ -249,4 +265,4 @@ Not verified:
 1. Work through the rest of the "not verified" list on Home Assistant OS.
 2. Close the version-before-image window, by testing both architectures
    before the update commits or by publishing before the version lands.
-3. AppArmor profile, icon and logo.
+3. AppArmor profile.

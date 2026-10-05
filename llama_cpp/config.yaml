@@ -1,5 +1,5 @@
 name: llama.cpp
-version: "0.1.1"
+version: "0.1.2"
 slug: llama_cpp
 description: >-
   Runs a llama.cpp server on this Home Assistant system, with an
@@ -36,10 +36,14 @@ options:
   # Empty rather than absent, so the configuration screen shows the field.
   model: ""
   preload: []
+  # llama.cpp's own default is four slots.
+  parallel: 2
+  thinking: false
 schema:
   model: str?
   preload:
     - str
+  thinking: bool
   context_size: int(0,)?
   gpu_layers: match(^(auto|all|[0-9]+)$)?
   threads: int(1,)?

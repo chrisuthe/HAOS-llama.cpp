@@ -1,2 +1,3 @@
-name: llama.cpp app
+name: llama.cpp for Home Assistant
 url: https://github.com/chrisuthe/HAOS-llama.cpp
+maintainer: Chris Uthe (https://github.com/chrisuthe)

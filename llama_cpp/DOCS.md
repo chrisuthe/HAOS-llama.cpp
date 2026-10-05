@@ -23,17 +23,18 @@ the web UI shows a model picker. Restart the app after adding a model.
 
 ## Configuration
 
-Every option except **Model** and **Preload** is hidden behind "Show unused
-optional configuration options", and all of them can be left empty.
+**Model**, **Preload**, **Parallel requests** and **Thinking** are shown; the rest are behind
+"Show unused optional configuration options" and can be left unset.
 
 | Option | Meaning |
 |---|---|
 | **Model** | A Hugging Face reference, a file name in `/share/llama_cpp/models`, or empty. |
 | **Preload** | Models to load at startup when **Model** is empty. See below. |
+| **Thinking** | Let reasoning models think before they answer. Off by default, for faster answers. |
 | **Context size** | Prompt context in tokens. Unset or 0 takes the size from the model. |
 | **GPU layers** | A number, `all`, or `auto`. Unset is `auto`. `0` stays on the CPU. |
 | **CPU threads** | Threads used for generation. |
-| **Parallel requests** | Requests served at once. They share the context. |
+| **Parallel requests** | Requests served at once, each in its own slot. They share the context. Default 2. |
 | **API key** | Require this key on every request. |
 | **Hugging Face token** | For gated or private models. |
 | **Extra arguments** | Any other `llama-server` arguments. They are applied last. |
@@ -64,8 +65,8 @@ supported, because Home Assistant OS has no driver for them.
 
 ## Security
 
-Port 8080 is open to your network, and without an **API key** anyone who can
-reach it can use the server. Either set a key, or remove the port under
+**Port 8080 is open to your network, and without an API key anyone who can
+reach it can use the server.** Either set a key, or remove the port under
 **Network** — the web UI inside Home Assistant keeps working, and the
 integration then needs the app's internal hostname instead of `127.0.0.1`.
 

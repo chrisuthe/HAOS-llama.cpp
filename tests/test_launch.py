@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -8,7 +9,7 @@ spec = importlib.util.spec_from_file_location("launch", LAUNCH)
 launch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(launch)
 
-BASE = ["/app/llama-server", "--host", "0.0.0.0", "--port", "8080"]
+BASE = ["/app/llama-server", "--host", "0.0.0.0", "--port", "8080", "--reasoning", "off"]
 
 
 class BuildArgv(unittest.TestCase):
@@ -20,6 +21,12 @@ class BuildArgv(unittest.TestCase):
 
     def argv(self, **options):
         return launch.build_argv(options, self.models)
+
+    def test_thinking_on_leaves_reasoning_to_llama_cpp(self):
+        self.assertNotIn("--reasoning", self.argv(thinking=True))
+
+    def test_thinking_off_is_explicit(self):
+        self.assertEqual(self.argv(thinking=False), self.argv())
 
     def test_no_model_is_router_mode(self):
         expected = BASE + ["--models-dir", str(self.models)]
@@ -120,10 +127,41 @@ class Preload(unittest.TestCase):
                 launch.preset_text([bad], self.models)
 
 
+class ManifestDefaults(unittest.TestCase):
+    """What a fresh install runs: the `options` block of config.yaml."""
+
+    def defaults(self):
+        # Read without a YAML parser, which the standard library lacks. Each
+        # default has to be a flat `key: value` whose value is also valid JSON.
+        manifest = (Path(__file__).parent.parent / "llama_cpp/config.yaml").read_text()
+        block = manifest.split("\noptions:\n", 1)[1].split("\nschema:\n", 1)[0]
+        options = {}
+        for line in block.splitlines():
+            if line.strip() and not line.lstrip().startswith("#"):
+                key, _, value = line.strip().partition(": ")
+                options[key] = json.loads(value)
+        return options
+
+    def test_default_options(self):
+        self.assertEqual(
+            self.defaults(),
+            {"model": "", "preload": [], "parallel": 2, "thinking": False},
+        )
+
+    def test_default_command(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            argv = launch.build_argv(self.defaults(), Path(tmp))
+        self.assertEqual(argv, BASE + ["--models-dir", tmp, "--parallel", "2"])
+
+
 class BuildEnv(unittest.TestCase):
     def test_cache_dir_is_always_set(self):
         env = launch.build_env({}, {"PATH": "/bin"}, Path("/share/llama_cpp/cache"))
         self.assertEqual(env, {"PATH": "/bin", "LLAMA_CACHE": "/share/llama_cpp/cache"})
+
+    def test_host_variable_from_the_base_image_is_dropped(self):
+        env = launch.build_env({}, {"LLAMA_ARG_HOST": "0.0.0.0"}, Path("/c"))
+        self.assertNotIn("LLAMA_ARG_HOST", env)
 
     def test_secrets_go_to_the_environment(self):
         env = launch.build_env({"api_key": "k", "hf_token": "hf_t"}, {}, Path("/c"))

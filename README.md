@@ -22,7 +22,8 @@ Experimental: it runs on Home Assistant OS, but GPU offload there is untested.
 
 ## Layout
 
-- `llama_cpp/` — the app: `config.yaml`, `Dockerfile`, and the launcher under
+- `llama_cpp/` — the app: `config.yaml`, `Dockerfile`, the store listing
+  (`README.md`, `DOCS.md`, `icon.png`, `logo.png`), and the launcher under
   `rootfs/`.
 - `tests/` — unit tests for the launcher.
 - `scripts/smoke_test.sh` — builds the image and runs it as the Supervisor
@@ -62,3 +63,8 @@ LLAMA_CPP_TAG=v0.5.0 python3 scripts/update_llama.py  # a specific one
 ## Licence
 
 MIT — see [LICENSE](LICENSE). llama.cpp itself is also MIT licensed.
+
+`llama_cpp/icon.png` and `llama_cpp/logo.png` are llama.cpp's own artwork,
+resized from `media/llama1-icon.png` and `media/llama1-logo.png` in its
+repository, and are covered by its MIT licence: Copyright (c) 2023-2026 The
+ggml authors.

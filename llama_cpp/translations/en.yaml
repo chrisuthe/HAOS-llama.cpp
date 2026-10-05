@@ -11,6 +11,11 @@ configuration:
       Models to load when the app starts, instead of on their first request.
       Name them as the web UI lists them, or by file name. Only used while
       Model is empty; a model set above is always loaded at start.
+  thinking:
+    name: Thinking
+    description: >-
+      Let models that can reason before answering do so. Off gives faster
+      answers; turn it on for models you use for harder questions.
   context_size:
     name: Context size
     description: >-
@@ -27,8 +32,8 @@ configuration:
   parallel:
     name: Parallel requests
     description: >-
-      Requests served at the same time. The context is shared between them.
-      Leave unset to let llama.cpp decide.
+      Requests served at the same time, each in its own slot. The context is
+      shared between them.
   api_key:
     name: API key
     description: >-

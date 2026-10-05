@@ -91,6 +91,11 @@ def preset_text(preload, models_dir):
 
 def build_argv(options, models_dir, preset_file=PRESET_FILE):
     argv = [SERVER, "--host", "0.0.0.0", "--port", str(PORT)]
+    # Off unless asked for: a thinking model reasons at length before every
+    # answer, which is most of the wait on a voice request. On leaves
+    # llama.cpp to follow the model's template rather than forcing it.
+    if not options.get("thinking"):
+        argv += ["--reasoning", "off"]
     argv += model_args(options.get("model"), models_dir)
     # A single model is loaded at startup anyway, and presets are a router
     # feature, so `preload` only applies with no model set.
@@ -110,6 +115,9 @@ def build_argv(options, models_dir, preset_file=PRESET_FILE):
 
 def build_env(options, environ, cache_dir):
     env = dict(environ)
+    # The base image sets this, and llama-server warns on every start that
+    # --host overrides it.
+    env.pop("LLAMA_ARG_HOST", None)
     env["LLAMA_CACHE"] = str(cache_dir)
     # Secrets go through the environment so they stay out of the logged
     # command line and out of the process list.
