@@ -53,7 +53,7 @@ jobs:
       # A manifest the Supervisor rejects is an app that never shows up in the
       # store, with no other symptom.
       - name: Lint the app manifest
-        uses: frenck/action-addon-linter@b9cfd1bc62ba60d2c4fc96317b5f7ada5923f4a7 # v2.21.1
+        uses: frenck/action-addon-linter@d51677290aef26cdfc835271dd3c7343ce502809 # v2.21.2
         with:
           path: ./llama_cpp
 
